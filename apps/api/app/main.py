@@ -8,29 +8,28 @@ from app.db.base import Base
 from app.db.session import engine
 from app.realtime.socket import sio
 
+FRONTEND_ORIGIN = "https://optimistic-determination-production-1895.up.railway.app"
+LOCAL_ORIGIN = "http://localhost:3000"
+
 app = FastAPI(title="Wishlist Realtime API")
 
 # --- CORS ---
-# settings.cors_origins может быть None/пустым => не падаем
 raw = (getattr(settings, "cors_origins", None) or "").strip()
-
 origins = [o.strip() for o in raw.split(",") if o.strip()]
 
-# В проде лучше без "*", но чтобы не ловить 400 из-за пустоты — fallback
+# Если на Railway переменная не задана — ставим нормальный дефолт (НЕ "*")
 if not origins:
-    origins = ["*"]
+    origins = [FRONTEND_ORIGIN, LOCAL_ORIGIN]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=True,
+    allow_credentials=False,  # токен в localStorage -> cookie не нужны
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*"],      # разрешит Content-Type, Authorization и т.д.
 )
 
-# --- Preflight handler ---
-# Если по какой-то причине OPTIONS не обрабатывается корректно (Railway/прокси/роуты),
-# этот хэндлер гарантирует 204 и дальше CORSMiddleware добавит нужные заголовки.
+# --- Preflight handler (на всякий случай) ---
 @app.options("/{path:path}")
 async def preflight(path: str, request: Request):
     return Response(status_code=204)
@@ -49,4 +48,3 @@ asgi_app = socketio.ASGIApp(
     sio,
     other_asgi_app=app
 )
-
