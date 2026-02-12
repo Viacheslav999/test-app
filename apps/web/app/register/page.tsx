@@ -16,7 +16,7 @@ export default function Register() {
     setErr(null);
     setLoading(true);
     try {
-      const res = await apiFetch<{ access_token: string }>('/auth/register', {
+      const res = await apiFetch<{ access_token: string }>('/api/auth/register', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       });

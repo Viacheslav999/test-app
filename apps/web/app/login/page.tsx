@@ -16,7 +16,7 @@ export default function Login() {
     setErr(null);
     setLoading(true);
     try {
-      const res = await apiFetch<{ access_token: string }>('/auth/login', {
+      const res = await apiFetch<{ access_token: string }>('/api/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password }),
       });
