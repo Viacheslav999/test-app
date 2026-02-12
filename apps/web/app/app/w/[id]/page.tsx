@@ -73,6 +73,7 @@ export default function AdminWishlistPage() {
     setTimeout(() => setInfo(null), 1500);
   }
 
+  // ✅ FIX: через /api (Next proxy), чтобы работало в проде
   async function autofillByUrl() {
     setInfo(null);
     setErr(null);
@@ -80,10 +81,12 @@ export default function AdminWishlistPage() {
 
     try {
       const q = encodeURIComponent(itemUrl.trim());
-      const meta = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/meta?url=${q}`).then(r => r.json());
+      const meta = await apiFetch<{ title?: string; image_url?: string; price?: number }>(`/meta?url=${q}`);
+
       if (meta?.title && !itemTitle) setItemTitle(meta.title);
       if (meta?.image_url && !itemImage) setItemImage(meta.image_url);
-      if (meta?.price && !itemPrice) setItemPrice(String(meta.price));
+      if (typeof meta?.price === "number" && !itemPrice) setItemPrice(String(meta.price));
+
       setInfo("Автозаполнение выполнено");
       setTimeout(() => setInfo(null), 1500);
     } catch {
@@ -298,4 +301,3 @@ export default function AdminWishlistPage() {
     </div>
   );
 }
-

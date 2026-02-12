@@ -15,6 +15,7 @@ export default function AppHome() {
   const [items, setItems] = useState<Wishlist[]>([]);
   const [title, setTitle] = useState('');
   const [err, setErr] = useState<string | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
 
   async function load() {
     const token = getToken();
@@ -46,6 +47,18 @@ export default function AppHome() {
       setItems([w, ...items]);
     } catch (e: any) {
       setErr(e.message);
+    }
+  }
+
+  async function copyPublicLink(slug: string) {
+    try {
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      const full = `${origin}/w/${slug}`;
+      await navigator.clipboard.writeText(full);
+      setCopied(slug);
+      setTimeout(() => setCopied(null), 1200);
+    } catch {
+      alert('Не удалось скопировать ссылку');
     }
   }
 
@@ -82,11 +95,7 @@ export default function AppHome() {
 
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: 240 }}>
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Например: День рождения"
-            />
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Например: День рождения" />
           </div>
           <Button variant="primary" onClick={createWishlist} disabled={!title.trim()}>
             Создать
@@ -116,9 +125,16 @@ export default function AppHome() {
               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, flexWrap: 'wrap' }}>
                 <div style={{ minWidth: 240 }}>
                   <div style={{ fontWeight: 700, fontSize: 16 }}>{w.title}</div>
-                  <div style={{ marginTop: 6, color: '#64748b', fontSize: 13 }}>
+
+                  <div style={{ marginTop: 6, color: '#64748b', fontSize: 13, wordBreak: 'break-all' }}>
                     Публичная ссылка:{' '}
                     <Link href={`/w/${w.public_slug}`}>/w/{w.public_slug}</Link>
+                  </div>
+
+                  <div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <Button variant="ghost" onClick={() => copyPublicLink(w.public_slug)}>
+                      {copied === w.public_slug ? 'Скопировано!' : 'Скопировать ссылку'}
+                    </Button>
                   </div>
                 </div>
 
