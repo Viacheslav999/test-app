@@ -1,9 +1,10 @@
 ﻿// 🔴 API всегда через Next-прокси (/api/*)
 export const API_URL = "";
 
-// 🔴 Socket.IO ДОЛЖЕН быть http/https, НЕ ws/wss
+// 🔴 Socket.IO: в проде должен смотреть на backend Railway
 export const SOCKET_URL =
-  process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:8000";
+  process.env.NEXT_PUBLIC_SOCKET_URL ||
+  "https://test-app-production-9e21.up.railway.app";
 
 export function getToken(): string | null {
   if (typeof window === "undefined") return null;

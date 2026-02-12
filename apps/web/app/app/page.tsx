@@ -1,8 +1,10 @@
 ﻿'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { apiFetch, clearToken, getToken } from '@/lib/api';
+import { io } from 'socket.io-client';
+
+import { apiFetch, clearToken, getToken, SOCKET_URL } from '@/lib/api';
 import { Card, Button, Input, Badge } from '@/components/ui';
 
 type Wishlist = {
@@ -35,6 +37,40 @@ export default function AppHome() {
   useEffect(() => {
     load();
   }, []);
+
+  // ✅ realtime: при любом событии с любого вишлиста — обновляем список
+  useEffect(() => {
+    if (!items.length) return;
+
+    const socket = io(SOCKET_URL, {
+      path: '/socket.io',
+      transports: ['polling', 'websocket'],
+      withCredentials: false,
+    });
+
+    socket.on('connect', () => {
+      // джойнимся во все комнаты, которые есть у пользователя
+      for (const w of items) socket.emit('join_wishlist', { wishlist_id: w.id });
+    });
+
+    const onAnyUpdate = () => {
+      // просто рефетчим, чтобы не городить сложный merge в список
+      load();
+    };
+
+    socket.on('reservation_changed', onAnyUpdate);
+    socket.on('funding_progress', onAnyUpdate);
+
+    return () => {
+      try {
+        for (const w of items) socket.emit('leave_wishlist', { wishlist_id: w.id });
+      } catch {}
+      socket.off('reservation_changed', onAnyUpdate);
+      socket.off('funding_progress', onAnyUpdate);
+      socket.disconnect();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items.map((x) => x.id).join(',')]);
 
   async function createWishlist() {
     setErr(null);
