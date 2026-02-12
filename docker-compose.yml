@@ -1,0 +1,30 @@
+﻿services:
+  db:
+    image: postgres:16
+    container_name: wishlist_db
+    environment:
+      POSTGRES_USER: wishlist
+      POSTGRES_PASSWORD: wishlist
+      POSTGRES_DB: wishlist
+    ports:
+      - "5432:5432"
+    volumes:
+      - wishlist_pgdata:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: wishlist_api
+    environment:
+      DATABASE_URL: postgresql+psycopg://wishlist:wishlist@db:5432/wishlist
+      JWT_SECRET: dev_super_secret_change_me
+      JWT_ACCESS_MINUTES: "60"
+      CORS_ORIGINS: http://localhost:3000
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+volumes:
+  wishlist_pgdata:
