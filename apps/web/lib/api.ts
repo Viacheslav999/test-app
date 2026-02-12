@@ -1,4 +1,6 @@
-﻿export const API_URL = ""; // ВАЖНО: все запросы идут на тот же домен фронта (через /api/...)
+﻿export const API_URL = ""; 
+// пусто = запросы идут на тот же домен фронта (через Next proxy /api)
+
 export const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000";
 
 export function getToken(): string | null {
@@ -21,7 +23,15 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
   const token = getToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
-  const res = await fetch(`${API_URL}${path}`, { ...init, headers });
+  // 🔥 ВОТ ГЛАВНОЕ: автопрефикс /api
+  const finalPath = path.startsWith("/api/")
+    ? path
+    : `/api${path.startsWith("/") ? path : `/${path}`}`;
+
+  const res = await fetch(`${API_URL}${finalPath}`, {
+    ...init,
+    headers,
+  });
 
   if (!res.ok) {
     let detail = "Request failed";
