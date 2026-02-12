@@ -54,9 +54,7 @@ export default function PublicWishlistPage() {
 
     if (isBadSlug) {
       setData(null);
-      setErr(
-        "Ты открыл ссылку-плейсхолдер. Нужна реальная ссылка вида /w/XXXXXXXXXXXXXXX (public_slug), а не /w/<slug>."
-      );
+      setErr("Нужна реальная ссылка вида /w/XXXXXXXXXXXXXXX (public_slug), а не /w/<slug>.");
       return;
     }
 
@@ -74,13 +72,11 @@ export default function PublicWishlistPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
 
-  // realtime updates
+  // realtime updates (для других вкладок/людей)
   useEffect(() => {
-    if (!data) return;
+    if (!data?.id) return;
 
-    const socket = io(SOCKET_URL, {
-      transports: ["websocket"],
-    });
+    const socket = io(SOCKET_URL, { transports: ["websocket"] });
 
     socket.on("connect", () => {
       socket.emit("join_wishlist", { wishlist_id: data.id });
@@ -126,8 +122,16 @@ export default function PublicWishlistPage() {
         method: "POST",
         body: JSON.stringify({ slug, item_id: itemId, guest_token: guestToken }),
       });
+
+      // ✅ обновим страницу сразу (на случай, если сокет не сработал в этой вкладке)
+      await load();
     } catch (e: any) {
-      alert(e.message || "Не удалось забронировать");
+      const msg = String(e?.message || "");
+      if (msg.toLowerCase().includes("already reserved")) {
+        alert("Уже зарезервировано кем-то другим.");
+      } else {
+        alert(msg || "Не удалось забронировать");
+      }
     } finally {
       setBusy((b) => ({ ...b, [key]: false }));
     }
@@ -141,6 +145,9 @@ export default function PublicWishlistPage() {
         method: "POST",
         body: JSON.stringify({ slug, item_id: itemId, guest_token: guestToken }),
       });
+
+      // ✅ обновим сразу
+      await load();
     } catch (e: any) {
       alert(e.message || "Не удалось снять бронь");
     } finally {
@@ -155,9 +162,20 @@ export default function PublicWishlistPage() {
       const amount = Number(fundAmount[itemId] || "0");
       await apiFetch(`/public/contribute`, {
         method: "POST",
-        body: JSON.stringify({ slug, item_id: itemId, amount, currency: "EUR", guest_token: guestToken }),
+        body: JSON.stringify({
+          slug,
+          item_id: itemId,
+          amount,
+          currency: "EUR",
+          guest_token: guestToken,
+        }),
       });
+
+      // очистим поле
       setFundAmount((m) => ({ ...m, [itemId]: "" }));
+
+      // ✅ обновим суммы сразу (чтобы "Собрано" обновилось даже без сокета)
+      await load();
     } catch (e: any) {
       alert(e.message || "Не удалось внести вклад");
     } finally {
@@ -167,7 +185,15 @@ export default function PublicWishlistPage() {
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: 12,
+          flexWrap: "wrap",
+        }}
+      >
         <div>
           <h1 style={{ margin: 0 }}>{data?.title || "Wishlist"}</h1>
           <div style={{ marginTop: 6, opacity: 0.7, fontSize: 13 }}>
@@ -176,8 +202,12 @@ export default function PublicWishlistPage() {
         </div>
 
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <Button variant="ghost" onClick={goHome}>Назад</Button>
-          <Link href="/register"><Button variant="primary">Создать свой</Button></Link>
+          <Button variant="ghost" onClick={goHome}>
+            Назад
+          </Button>
+          <Link href="/register">
+            <Button variant="primary">Создать свой</Button>
+          </Link>
         </div>
       </div>
 
@@ -193,12 +223,16 @@ export default function PublicWishlistPage() {
       )}
 
       {!data ? (
-        <Card><div style={{ opacity: 0.75 }}>Загружаем…</div></Card>
+        <Card>
+          <div style={{ opacity: 0.75 }}>Загружаем…</div>
+        </Card>
       ) : data.items.length === 0 ? (
         <Card>
           <div style={{ textAlign: "center", padding: 10 }}>
             <div style={{ fontWeight: 700, fontSize: 16 }}>Пока нет подарков</div>
-            <div style={{ marginTop: 6, opacity: 0.75, fontSize: 13 }}>Владелец ещё ничего не добавил. Вернись позже.</div>
+            <div style={{ marginTop: 6, opacity: 0.75, fontSize: 13 }}>
+              Владелец ещё ничего не добавил. Вернись позже.
+            </div>
           </div>
         </Card>
       ) : (
@@ -211,7 +245,16 @@ export default function PublicWishlistPage() {
             return (
               <Card key={it.id}>
                 <div style={{ display: "flex", gap: 14, alignItems: "flex-start", flexWrap: "wrap" }}>
-                  <div style={{ width: 84, height: 84, borderRadius: 14, overflow: "hidden", flex: "0 0 auto", border: "1px solid rgba(255,255,255,.12)" }}>
+                  <div
+                    style={{
+                      width: 84,
+                      height: 84,
+                      borderRadius: 14,
+                      overflow: "hidden",
+                      flex: "0 0 auto",
+                      border: "1px solid rgba(255,255,255,.12)",
+                    }}
+                  >
                     {it.image_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={it.image_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
@@ -227,7 +270,9 @@ export default function PublicWishlistPage() {
                     </div>
 
                     <div style={{ marginTop: 6, opacity: 0.7, fontSize: 13, wordBreak: "break-word" }}>
-                      <a href={it.url} target="_blank" rel="noreferrer">{it.url}</a>
+                      <a href={it.url} target="_blank" rel="noreferrer">
+                        {it.url}
+                      </a>
                     </div>
 
                     {it.price != null && (
