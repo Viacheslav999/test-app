@@ -43,3 +43,15 @@ type BadgeProps = React.HTMLAttributes<HTMLSpanElement>;
 export function Badge({ className, ...props }: BadgeProps) {
   return <span className={cx("badge", className)} {...props} />;
 }
+
+/** ✅ ДОБАВЛЕНО: Card / CardContent (чтобы импорт { Card } работал и next build не падал) */
+type CardProps = React.HTMLAttributes<HTMLDivElement>;
+
+export function Card({ className, ...props }: CardProps) {
+  return <div className={cx("card", className)} {...props} />;
+}
+
+export function CardContent({ className, ...props }: CardProps) {
+  return <div className={cx("card-content", className)} {...props} />;
+}
+
