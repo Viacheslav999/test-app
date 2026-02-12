@@ -11,7 +11,7 @@ from app.realtime.socket import sio
 FRONTEND_ORIGIN = "https://optimistic-determination-production-1895.up.railway.app"
 LOCAL_ORIGIN = "http://localhost:3000"
 
-# 1️⃣ Внутренний FastAPI
+# 1️⃣ ВНУТРЕННИЙ FastAPI
 fastapi_app = FastAPI(title="Wishlist Realtime API")
 
 # --- CORS ---
@@ -38,14 +38,17 @@ async def preflight(path: str, request: Request):
 def health():
     return {"ok": True}
 
-# API
+# API роуты
 fastapi_app.include_router(api_router)
 
 # DB (MVP)
 Base.metadata.create_all(bind=engine)
 
-# 2️⃣ ГЛАВНОЕ ASGI-ПРИЛОЖЕНИЕ (HTTP + Socket.IO)
-app = socketio.ASGIApp(
+# 2️⃣ ASGI (FastAPI + Socket.IO)
+asgi_app = socketio.ASGIApp(
     sio,
     other_asgi_app=fastapi_app
 )
+
+# 🔥 АЛИАС ДЛЯ RAILWAY / UVICORN
+app = asgi_app
