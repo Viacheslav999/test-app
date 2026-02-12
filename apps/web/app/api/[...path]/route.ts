@@ -1,11 +1,16 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 const BACKEND = "https://test-app-production-9e21.up.railway.app";
 
-type Ctx = { params: { path: string[] } };
+async function getPath(ctx: any): Promise<string> {
+  // Next 16 может дать params как Promise
+  const params = await ctx?.params;
+  const arr = params?.path ?? [];
+  return Array.isArray(arr) ? arr.join("/") : String(arr);
+}
 
-async function forward(req: Request, ctx: Ctx) {
-  const path = (ctx?.params?.path ?? []).join("/");
+async function forward(req: NextRequest, ctx: any) {
+  const path = await getPath(ctx);
   const url = new URL(req.url);
 
   const target = `${BACKEND}/${path}${url.search}`;
@@ -28,18 +33,18 @@ export async function OPTIONS() {
   return new NextResponse(null, { status: 204 });
 }
 
-export async function GET(req: Request, ctx: Ctx) {
+export async function GET(req: NextRequest, ctx: any) {
   return forward(req, ctx);
 }
-export async function POST(req: Request, ctx: Ctx) {
+export async function POST(req: NextRequest, ctx: any) {
   return forward(req, ctx);
 }
-export async function PUT(req: Request, ctx: Ctx) {
+export async function PUT(req: NextRequest, ctx: any) {
   return forward(req, ctx);
 }
-export async function PATCH(req: Request, ctx: Ctx) {
+export async function PATCH(req: NextRequest, ctx: any) {
   return forward(req, ctx);
 }
-export async function DELETE(req: Request, ctx: Ctx) {
+export async function DELETE(req: NextRequest, ctx: any) {
   return forward(req, ctx);
 }
