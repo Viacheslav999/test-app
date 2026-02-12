@@ -1,20 +1,17 @@
-﻿import React from "react";
+﻿import * as React from "react";
+import { cx } from "@/lib/cn";
 
-function cx(...xs: Array<string | undefined | false | null>) {
-  return xs.filter(Boolean).join(" ");
-}
+type ButtonVariant = "default" | "primary" | "ghost" | "danger";
 
-export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cx("card", className)} {...props} />;
-}
+type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: ButtonVariant;
+};
 
 export function Button({
-  className,
   variant = "default",
+  className,
   ...props
-}: React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "default" | "primary" | "ghost" | "danger";
-}) {
+}: ButtonProps) {
   return (
     <button
       className={cx(
@@ -29,14 +26,20 @@ export function Button({
   );
 }
 
-export function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
+type InputProps = React.InputHTMLAttributes<HTMLInputElement>;
+
+export function Input({ className, ...props }: InputProps) {
   return <input className={cx("input", className)} {...props} />;
 }
 
-export function Label({ className, ...props }: React.LabelHTMLAttributes<HTMLLabelElement>) {
+type LabelProps = React.LabelHTMLAttributes<HTMLLabelElement>;
+
+export function Label({ className, ...props }: LabelProps) {
   return <label className={cx("label", className)} {...props} />;
 }
 
-export function Badge({ className, ...props }: React.HTMLAttributes<HTMLSpanElement>) {
+type BadgeProps = React.HTMLAttributes<HTMLSpanElement>;
+
+export function Badge({ className, ...props }: BadgeProps) {
   return <span className={cx("badge", className)} {...props} />;
 }
