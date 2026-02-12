@@ -1,7 +1,9 @@
-﻿export const API_URL = ""; 
-// пусто = запросы идут на тот же домен фронта (через Next proxy /api)
+﻿// 🔴 API всегда через Next-прокси (/api/*)
+export const API_URL = "";
 
-export const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000";
+// 🔴 Socket.IO ДОЛЖЕН быть http/https, НЕ ws/wss
+export const SOCKET_URL =
+  process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:8000";
 
 export function getToken(): string | null {
   if (typeof window === "undefined") return null;
@@ -16,14 +18,17 @@ export function clearToken() {
   localStorage.removeItem("access_token");
 }
 
-export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
+export async function apiFetch<T>(
+  path: string,
+  init: RequestInit = {}
+): Promise<T> {
   const headers = new Headers(init.headers || {});
   headers.set("Content-Type", "application/json");
 
   const token = getToken();
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
-  // 🔥 ВОТ ГЛАВНОЕ: автопрефикс /api
+  // 🔥 автопрефикс /api
   const finalPath = path.startsWith("/api/")
     ? path
     : `/api${path.startsWith("/") ? path : `/${path}`}`;

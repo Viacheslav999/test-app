@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { io } from "socket.io-client";
 
-import { apiFetch, WS_URL, getGuestToken } from "@/lib/api";
+import { apiFetch, getGuestToken, SOCKET_URL } from "@/lib/api";
 import { Card, Button, Input, Badge } from "@/components/ui";
 import { Progress } from "@/components/progress";
 
@@ -25,7 +25,7 @@ type PublicWishlist = { id: number; title: string; items: Item[] };
 export default function PublicWishlistPage() {
   const router = useRouter();
   const params = useParams();
-  const slug = String(params.slug);
+  const slug = String(params.slug || "");
 
   const [data, setData] = useState<PublicWishlist | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -41,25 +41,46 @@ export default function PublicWishlistPage() {
     else window.location.href = "/";
   }
 
+  const isBadSlug =
+    !slug ||
+    slug.includes("<") ||
+    slug.includes(">") ||
+    slug.toLowerCase() === "slug" ||
+    slug === "[slug]" ||
+    slug === "{slug}";
+
   async function load() {
     setErr(null);
+
+    if (isBadSlug) {
+      setData(null);
+      setErr(
+        "Ты открыл ссылку-плейсхолдер. Нужна реальная ссылка вида /w/XXXXXXXXXXXXXXX (public_slug), а не /w/<slug>."
+      );
+      return;
+    }
+
     try {
-      const w = await apiFetch<PublicWishlist>(`/wishlists/public/${slug}`, { headers: {} });
+      const w = await apiFetch<PublicWishlist>(`/wishlists/public/${slug}`);
       setData(w);
     } catch (e: any) {
+      setData(null);
       setErr(e.message || "Ошибка загрузки");
     }
   }
 
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
 
   // realtime updates
   useEffect(() => {
     if (!data) return;
 
-    const socket = io(WS_URL, { transports: ["websocket"] });
+    const socket = io(SOCKET_URL, {
+      transports: ["websocket"],
+    });
 
     socket.on("connect", () => {
       socket.emit("join_wishlist", { wishlist_id: data.id });
@@ -70,7 +91,9 @@ export default function PublicWishlistPage() {
         if (!prev) return prev;
         return {
           ...prev,
-          items: prev.items.map((it) => (it.id === payload.item_id ? { ...it, reserved: payload.reserved } : it)),
+          items: prev.items.map((it) =>
+            it.id === payload.item_id ? { ...it, reserved: payload.reserved } : it
+          ),
         };
       });
     });
@@ -80,7 +103,9 @@ export default function PublicWishlistPage() {
         if (!prev) return prev;
         return {
           ...prev,
-          items: prev.items.map((it) => (it.id === payload.item_id ? { ...it, funded_amount: payload.funded_amount } : it)),
+          items: prev.items.map((it) =>
+            it.id === payload.item_id ? { ...it, funded_amount: payload.funded_amount } : it
+          ),
         };
       });
     });
@@ -100,7 +125,6 @@ export default function PublicWishlistPage() {
       await apiFetch(`/public/reserve`, {
         method: "POST",
         body: JSON.stringify({ slug, item_id: itemId, guest_token: guestToken }),
-        headers: {},
       });
     } catch (e: any) {
       alert(e.message || "Не удалось забронировать");
@@ -116,7 +140,6 @@ export default function PublicWishlistPage() {
       await apiFetch(`/public/unreserve`, {
         method: "POST",
         body: JSON.stringify({ slug, item_id: itemId, guest_token: guestToken }),
-        headers: {},
       });
     } catch (e: any) {
       alert(e.message || "Не удалось снять бронь");
@@ -133,7 +156,6 @@ export default function PublicWishlistPage() {
       await apiFetch(`/public/contribute`, {
         method: "POST",
         body: JSON.stringify({ slug, item_id: itemId, amount, currency: "EUR", guest_token: guestToken }),
-        headers: {},
       });
       setFundAmount((m) => ({ ...m, [itemId]: "" }));
     } catch (e: any) {
@@ -159,7 +181,16 @@ export default function PublicWishlistPage() {
         </div>
       </div>
 
-      {err && <Card><div style={{ color: "#fecaca" }}>{err}</div></Card>}
+      {err && (
+        <Card>
+          <div style={{ color: "#fecaca" }}>{err}</div>
+          {isBadSlug && (
+            <div style={{ marginTop: 8, opacity: 0.75, fontSize: 13 }}>
+              Нужен реальный public_slug. Его можно взять после создания вишлиста (создай в кабинете и скопируй ссылку).
+            </div>
+          )}
+        </Card>
+      )}
 
       {!data ? (
         <Card><div style={{ opacity: 0.75 }}>Загружаем…</div></Card>
