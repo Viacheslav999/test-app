@@ -72,14 +72,27 @@ export default function PublicWishlistPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
 
-  // realtime updates (для других вкладок/людей)
+  // ✅ realtime updates (для других вкладок/людей)
   useEffect(() => {
     if (!data?.id) return;
 
-    const socket = io(SOCKET_URL, { transports: ["websocket"] });
+    // 🔥 ВАЖНО ДЛЯ RAILWAY: не форсим только websocket
+    // сначала polling, потом upgrade на websocket
+    const socket = io(SOCKET_URL, {
+      path: "/socket.io",
+      transports: ["polling", "websocket"],
+      withCredentials: false,
+    });
 
     socket.on("connect", () => {
+      // можно убрать console.log потом
+      // console.log("SOCKET CONNECTED", socket.id);
       socket.emit("join_wishlist", { wishlist_id: data.id });
+    });
+
+    socket.on("connect_error", (e: any) => {
+      // если будет ошибка — сразу видно почему лайва нет
+      // console.log("SOCKET ERROR", e?.message || e);
     });
 
     socket.on("reservation_changed", (payload: { item_id: number; reserved: boolean }) => {
@@ -123,7 +136,7 @@ export default function PublicWishlistPage() {
         body: JSON.stringify({ slug, item_id: itemId, guest_token: guestToken }),
       });
 
-      // ✅ обновим страницу сразу (на случай, если сокет не сработал в этой вкладке)
+      // ✅ оставляем, чтобы текущая вкладка тоже обновилась даже если сокет тормозит
       await load();
     } catch (e: any) {
       const msg = String(e?.message || "");
@@ -146,7 +159,6 @@ export default function PublicWishlistPage() {
         body: JSON.stringify({ slug, item_id: itemId, guest_token: guestToken }),
       });
 
-      // ✅ обновим сразу
       await load();
     } catch (e: any) {
       alert(e.message || "Не удалось снять бронь");
@@ -156,32 +168,33 @@ export default function PublicWishlistPage() {
   }
 
   async function contribute(itemId: number) {
-    const key = `contrib:${itemId}`;
-    setBusy((b) => ({ ...b, [key]: true }));
-    try {
-      const amount = Number(fundAmount[itemId] || "0");
-      await apiFetch(`/public/contribute`, {
-        method: "POST",
-        body: JSON.stringify({
-          slug,
-          item_id: itemId,
-          amount,
-          currency: "EUR",
-          guest_token: guestToken,
-        }),
-      });
+  const key = `contrib:${itemId}`;
+  setBusy((b) => ({ ...b, [key]: true }));
+  try {
+    const amount = Number(fundAmount[itemId] || "0");
+    await apiFetch(`/public/contribute`, {
+      method: "POST",
+      body: JSON.stringify({
+        slug,
+        item_id: itemId,
+        amount,
+        currency: "EUR",
+        guest_token: guestToken,
+      }),
+    });
 
-      // очистим поле
-      setFundAmount((m) => ({ ...m, [itemId]: "" }));
+    // ✅ очистим поле
+    setFundAmount((m) => ({ ...m, [itemId]: "" }));
 
-      // ✅ обновим суммы сразу (чтобы "Собрано" обновилось даже без сокета)
-      await load();
-    } catch (e: any) {
-      alert(e.message || "Не удалось внести вклад");
-    } finally {
-      setBusy((b) => ({ ...b, [key]: false }));
-    }
+    // ✅ обновим суммы сразу (на случай если сокет не сработал в этой вкладке)
+    await load();
+  } catch (e: any) {
+    alert(e.message || "Не удалось внести вклад");
+  } finally {
+    setBusy((b) => ({ ...b, [key]: false }));
   }
+}
+
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
@@ -351,3 +364,4 @@ export default function PublicWishlistPage() {
     </div>
   );
 }
+
