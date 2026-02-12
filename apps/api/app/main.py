@@ -11,26 +11,25 @@ from app.realtime.socket import sio
 FRONTEND_ORIGIN = "https://optimistic-determination-production-1895.up.railway.app"
 LOCAL_ORIGIN = "http://localhost:3000"
 
-# 🔥 1) Это будет ВНУТРЕННЕЕ FastAPI приложение
+# 1️⃣ Внутренний FastAPI
 fastapi_app = FastAPI(title="Wishlist Realtime API")
 
 # --- CORS ---
 raw = (getattr(settings, "cors_origins", None) or "").strip()
 origins = [o.strip() for o in raw.split(",") if o.strip()]
 
-# Если на Railway переменная не задана — ставим нормальный дефолт (НЕ "*")
 if not origins:
     origins = [FRONTEND_ORIGIN, LOCAL_ORIGIN]
 
 fastapi_app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=False,  # токен в localStorage -> cookie не нужны
+    allow_credentials=False,
     allow_methods=["*"],
-    allow_headers=["*"],      # Content-Type, Authorization и т.д.
+    allow_headers=["*"],
 )
 
-# --- Preflight handler (на всякий случай) ---
+# --- Preflight ---
 @fastapi_app.options("/{path:path}")
 async def preflight(path: str, request: Request):
     return Response(status_code=204)
@@ -39,13 +38,14 @@ async def preflight(path: str, request: Request):
 def health():
     return {"ok": True}
 
+# API
 fastapi_app.include_router(api_router)
 
-# Создаём таблицы автоматически (для MVP)
+# DB (MVP)
 Base.metadata.create_all(bind=engine)
 
-# 🔥 2) А ВОТ ЭТО — ГЛАВНОЕ ASGI ПРИЛОЖЕНИЕ (и FastAPI внутри него)
+# 2️⃣ ГЛАВНОЕ ASGI-ПРИЛОЖЕНИЕ (HTTP + Socket.IO)
 app = socketio.ASGIApp(
     sio,
-    other_asgi_app=fastapi_app,
+    other_asgi_app=fastapi_app
 )
